@@ -39,9 +39,6 @@ public class UserService {
         if (userRepository.existsByUsername(dto.getUsername())) {
             throw new RuntimeException("Username already taken");
         }
-        if (dto.getEmail() == null) {
-            throw new RuntimeException("Email is required for verification");
-        }
 
         User user = UserMapper.toEntity(dto);
         if (user.getRole() == null) {
@@ -54,9 +51,33 @@ public class UserService {
         user.setVerified(false);
         User saved = userRepository.save(user);
 
-        // generate OTP and send email (registration verification)
         otpService.generateAndSendOtpForUser(saved);
 
+        return UserMapper.toDto(saved);
+    }
+
+    public UserDto registerAdmin(UserCreateDto dto, String requesterRole) {
+        log.info("Attempting to register new ADMIN");
+
+        if (!requesterRole.equals("ADMIN")) {
+            log.warn("Unauthorized attempt to create ADMIN by role: {}", requesterRole);
+            throw new ServiceException("You are not authorized to create an ADMIN");
+        }
+
+        if (userRepository.existsByUsername(dto.getUsername())) {
+            throw new RuntimeException("Username already taken");
+        }
+
+        User user = UserMapper.toEntity(dto);
+        if (user.getRole() == null) {
+            user.setRole(Role.VIEWER);
+        }
+
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setVerified(false);
+        User saved = userRepository.save(user);
+
+        otpService.generateAndSendOtpForUser(saved);
         return UserMapper.toDto(saved);
     }
 

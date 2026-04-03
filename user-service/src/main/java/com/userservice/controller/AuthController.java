@@ -6,6 +6,7 @@ import com.userservice.security.JwtUtil;
 import com.userservice.service.CustomUserDetailsService;
 import com.userservice.service.OtpService;
 import com.userservice.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
@@ -39,14 +40,19 @@ public class AuthController {
 
     // Register - now will send OTP to verify email
     @PostMapping("/register")
-    public ResponseEntity<UserDto> register(@Validated @RequestBody UserCreateDto dto) {
+    public ResponseEntity<ApiResponse<UserDto>> register(@Validated @RequestBody UserCreateDto dto) {
         UserDto created = userService.registerUser(dto);
         // OTP send done inside UserService -> OtpService
-        return ResponseEntity.ok(created);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Registration Successful",
+                created
+        ));
     }
 
     @PostMapping("/bulk-register")
-    public ResponseEntity<?> bulkRegister(@Validated @RequestBody BulkRegisterRequestDto request) {
+    public ResponseEntity<ApiResponse<?>> bulkRegister(
+            @Validated @RequestBody BulkRegisterRequestDto request
+    ) {
 
         int successCount = 0;
         int failureCount = 0;
@@ -75,27 +81,39 @@ public class AuthController {
             }
         }
 
-        return ResponseEntity.ok(Map.of(
-                "summary", Map.of(
-                        "total", request.getUsers().size(),
-                        "success", successCount,
-                        "failed", failureCount
-                ),
-                "results", results
+        return ResponseEntity.ok(ApiResponse.success(
+                "Registration successful",
+                Map.of(
+                        "summary", Map.of(
+                                "total", request.getUsers().size(),
+                                "success", successCount,
+                                "failed", failureCount
+                        ),
+                        "results", results
+                )
         ));
     }
 
+    @PostMapping("/createAdmin")
+    public ResponseEntity<ApiResponse<UserDto>> createAdmin(
+            @Validated @RequestBody UserCreateDto dto,
+            HttpServletRequest req
+    ) {
+        String token = req.getHeader("Authorization").substring(7);
+        String requesterRole = jwtUtil.extractRole(token);
 
-//    @PostMapping("/adminRegister")
-//    public ResponseEntity<UserDto> adminRegister(@Validated @RequestBody UserCreateDto dto) {
-//        UserDto created = userService.registerUser(dto);
-//        // OTP send done inside UserService -> OtpService
-//        return ResponseEntity.ok(created);
-//    }
+        UserDto created = userService.registerAdmin(dto, requesterRole);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Admin created successfully",
+                created
+        ));
+    }
 
     // ✅ FIXED: Login with PRN in JWT token
     @PostMapping("/login")
-    public ResponseEntity<AuthResponseDto> login(@Validated @RequestBody AuthRequestDto request) {
+    public ResponseEntity<ApiResponse<AuthResponseDto>> login(
+            @Validated @RequestBody AuthRequestDto request
+    ) {
         try {
             authManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
@@ -110,7 +128,7 @@ public class AuthController {
             if (userDto == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             if (!userDto.isVerified()) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(AuthResponseDto.builder().token(null).user(userDto).build());
+                        .body(ApiResponse.error("Access Denied"));
             }
 
             String role = user.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
@@ -123,7 +141,10 @@ public class AuthController {
             );
 
             AuthResponseDto resp = AuthResponseDto.builder().token(token).user(userDto).build();
-            return ResponseEntity.ok(resp);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Login Successful",
+                    resp
+            ));
         } catch (AuthenticationException e) {
             throw new BadCredentialsException("Invalid credentials");
         }
@@ -131,14 +152,21 @@ public class AuthController {
 
     // Validate credentials (no token) - useful if verifying before login
     @PostMapping("/validate-credentials")
-    public ResponseEntity<?> validateCredentials(@RequestBody AuthRequestDto dto) {
+    public ResponseEntity<ApiResponse<?>> validateCredentials(
+            @RequestBody AuthRequestDto dto
+    ) {
         boolean ok = userService.validateCredentials(dto.getUsername(), dto.getPassword());
-        return ResponseEntity.ok().body(Map.of("valid", ok));
+        return ResponseEntity.ok(ApiResponse.success(
+                "Validated",
+                Map.of("valid", ok)
+        ));
     }
 
     // Validate token (unchanged)
     @GetMapping("/validate-token")
-    public ResponseEntity<UserDto> validateToken(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<ApiResponse<UserDto>> validateToken(
+            @RequestHeader("Authorization") String authHeader
+    ) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(400).build();
         }
@@ -148,26 +176,42 @@ public class AuthController {
         String username = jwtUtil.extractUsername(token);
         UserDto dto = userService.findByUsername(username);
         if (dto == null) return ResponseEntity.status(404).build();
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Token validated successfully",
+                dto
+        ));
     }
 
     // ==== OTP endpoints ====
 
     // Verify OTP after registration
     @PostMapping("/verify-otp")
-    public ResponseEntity<?> verifyRegistrationOtp(@RequestBody Map<String, String> body) {
+    public ResponseEntity<ApiResponse<?>> verifyRegistrationOtp(@RequestBody Map<String, String> body) {
+
         String email = body.get("email");
         String otp = body.get("otp");
+
         if (email == null || otp == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "email and otp required"));
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Email and OTP are required", "BAD_REQUEST"));
         }
+
         boolean ok = otpService.verifyOtpForEmail(email, otp);
-        if (ok) return ResponseEntity.ok(Map.of("message", "Email verified"));
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "Invalid or expired OTP"));
+
+        if (ok) {
+            return ResponseEntity.ok(
+                    ApiResponse.success("Email verified", null)
+            );
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Invalid or expired OTP", "INVALID_OTP"));
     }
 
     @PostMapping("/bulk-verify-otp")
-    public ResponseEntity<?> bulkVerifyOtp(@Validated @RequestBody BulkOtpVerifyRequestDto request) {
+    public ResponseEntity<ApiResponse<?>> bulkVerifyOtp(
+            @Validated @RequestBody BulkOtpVerifyRequestDto request
+    ) {
 
         int successCount = 0;
         int failureCount = 0;
@@ -194,46 +238,94 @@ public class AuthController {
             }
         }
 
-        return ResponseEntity.ok(Map.of(
-                "summary", Map.of(
-                        "total", request.getRequests().size(),
-                        "verified", successCount,
-                        "failed", failureCount
-                ),
-                "results", results
+        return ResponseEntity.ok(ApiResponse.success(
+                "Verification successful",
+                Map.of(
+                        "summary", Map.of(
+                                "total", request.getRequests().size(),
+                                "verified", successCount,
+                                "failed", failureCount
+                        ),
+                        "results", results
+                )
         ));
     }
 
 
-    // Resend verification OTP (if user didn't get it)
+    // Resend Verification OTP
     @PostMapping("/resend-verify-otp")
-    public ResponseEntity<?> resendVerificationOtp(@RequestBody Map<String, String> body) {
+    public ResponseEntity<ApiResponse<?>> resendVerificationOtp(
+            @RequestBody Map<String, String> body
+    ) {
+
         String email = body.get("email");
-        if (email == null) return ResponseEntity.badRequest().body(Map.of("message", "email required"));
+
+        if (email == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(
+                            "Email is required", "BAD_REQUEST"
+                    ));
+        }
+
         otpService.generateAndSendOtpForEmail(email);
-        return ResponseEntity.ok(Map.of("message", "OTP resent"));
+
+        return ResponseEntity.ok(
+                ApiResponse.success("OTP resent successfully", null)
+        );
     }
 
     // Forgot password -> send OTP
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
+    public ResponseEntity<ApiResponse<?>> forgotPassword(
+            @RequestBody Map<String, String> body
+    ) {
+
         String email = body.get("email");
-        if (email == null) return ResponseEntity.badRequest().body(Map.of("message", "email required"));
+
+        if (email == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(
+                            "Email is required", "BAD_REQUEST"
+                    ));
+        }
+
         otpService.generateAndSendOtpForEmail(email);
-        return ResponseEntity.ok(Map.of("message", "OTP sent for password reset"));
+
+        return ResponseEntity.ok(
+                ApiResponse.success("OTP sent for password reset", null)
+        );
     }
 
     // Reset password using OTP (email + otp + newPassword)
+    // Reset password using OTP
     @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
+    public ResponseEntity<ApiResponse<?>> resetPassword(
+            @RequestBody Map<String, String> body
+    ) {
+
         String email = body.get("email");
         String otp = body.get("otp");
         String newPassword = body.get("newPassword");
+
         if (email == null || otp == null || newPassword == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "email, otp and newPassword required"));
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(
+                            "Email, OTP and new password are required",
+                            "BAD_REQUEST"
+                    ));
         }
+
         boolean ok = otpService.verifyOtpAndResetPassword(email, otp, newPassword);
-        if (ok) return ResponseEntity.ok(Map.of("message", "Password reset successful"));
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "Invalid or expired OTP"));
+
+        if (ok) {
+            return ResponseEntity.ok(
+                    ApiResponse.success("Password reset successful", null)
+            );
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(
+                        "Invalid or expired OTP", "INVALID_OTP"
+                ));
     }
 }

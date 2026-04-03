@@ -99,6 +99,7 @@ public class FinanceService {
         log.info("Attempting to add record in db.");
 
         UserResponse user = userServiceClient.getUser(usn);
+        log.info("{}", user);
         if (user == null) {
             log.info("Failed to validate user, cant add data in finance record.");
             throw new ExternalServiceException(
@@ -120,7 +121,8 @@ public class FinanceService {
             return FinanceMapper.toResponse(saved, user.getName());
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to add record");
+            log.error("Error while saving finance record", e);
+            throw new RuntimeException("Failed to add record", e);
         }
     }
 
@@ -185,7 +187,7 @@ public class FinanceService {
 
         log.info("Attempting to fetch all my records");
 
-        List<Finance> finances = financeRepository.findAllByUsnOrderByCreatedAtDesc(usn);
+        List<Finance> finances = financeRepository.findAllByUsnAndIsDeletedFalseOrderByCreatedAtDesc(usn);
         UserResponse user = userServiceClient.getUser(usn);
 
         return FinanceMapper.toResponseList(finances, user.getName());
@@ -196,7 +198,7 @@ public class FinanceService {
 
         log.info("Attempting to fetch all my data with type: {}", type);
 
-        List<Finance> finances = financeRepository.findAllByUsnAndTypeOrderByCreatedAtDesc(type);
+        List<Finance> finances = financeRepository.findAllByUsnAndTypeAndIsDeletedFalseOrderByCreatedAtDesc(usn, type);
         UserResponse userResponse = userServiceClient.getUser(usn);
 
         return FinanceMapper.toResponseList(finances, userResponse.getName());
@@ -210,7 +212,7 @@ public class FinanceService {
                 user.getName(), category);
 
         List<Finance> finances = financeRepository
-                .findAllByUsnAndCategoryOrderByCreatedAtDesc(category);
+                .findAllByUsnAndCategoryAndIsDeletedFalseOrderByCreatedAtDesc(usn, category);
 
         return FinanceMapper.toResponseList(finances, user.getName());
 
@@ -371,7 +373,7 @@ public class FinanceService {
 
         log.info("Attempting to fetch all the data with type: {}", type);
 
-        List<Finance> list = financeRepository.findAllByTypeOrderByCreatedAtDesc(type);
+        List<Finance> list = financeRepository.findAllByTypeAndIsDeletedFalseOrderByCreatedAtDesc(type);
 
         Map<Finance, String> map = createMap(list);
         return FinanceMapper.toResponseList(map);
@@ -382,7 +384,7 @@ public class FinanceService {
 
         log.info("Attempting to category all the data with type: {}", category);
 
-        List<Finance> list = financeRepository.findAllByCategoryOrderByCreatedAtDesc(category);
+        List<Finance> list = financeRepository.findAllByCategoryAndIsDeletedFalseOrderByCreatedAtDesc(category);
 
         Map<Finance, String> map = createMap(list);
         return FinanceMapper.toResponseList(map);

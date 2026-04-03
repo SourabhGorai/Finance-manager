@@ -1,10 +1,12 @@
 package com.finance.finance_service.client;
 
+import com.finance.finance_service.dto.ApiResponse;
 import com.finance.finance_service.dto.response.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -29,29 +31,33 @@ public class UserServiceClient {
         log.info("Calling user service to fetch user for USN: {}", usn);
 
         try {
-            UserResponse resp = webClientBuilder.build()
+            ApiResponse<UserResponse> response = webClientBuilder.build()
                     .get()
                     .uri(userServiceUrl + "/users/{usn}", usn)
                     .header("Authorization", authHeader)
                     .retrieve()
-                    .bodyToMono(UserResponse.class)
+                    .bodyToMono(new ParameterizedTypeReference
+                            <ApiResponse<UserResponse>>() {})
                     .block();
 
-            log.info("Successfully fetched data for USN: {}", usn);
-            return resp;
+            if (response == null || Boolean.FALSE.equals(response.getSuccess())) {
+                log.warn("User service returned failure for USN: {}", usn);
+                return null;
+            }
+
+            return response.getData();
 
         } catch (WebClientResponseException.NotFound e) {
             log.warn("User not found for USN: {}", usn);
             return null;
 
         } catch (WebClientResponseException e) {
-            log.error("Error fetching data for USN: {}: {} - {}",
-                    usn, e.getStatusCode(), e.getMessage());
-            throw new RuntimeException("Failed to fetch data for USN: " + usn, e);
+            log.error("Error fetching user {}: {} - {}", usn, e.getStatusCode(), e.getMessage());
+            throw new RuntimeException("Failed to fetch user: " + usn, e);
 
         } catch (Exception e) {
-            log.error("Unexpected error fetching data for USN: {}: {}", usn, e.getMessage());
-            throw new RuntimeException("Failed to fetch data for USN: " + usn, e);
+            log.error("Unexpected error fetching user {}: {}", usn, e.getMessage());
+            throw new RuntimeException("Failed to fetch user: " + usn, e);
         }
     }
 
@@ -61,18 +67,22 @@ public class UserServiceClient {
         log.info("Calling user service to fetch users for USNs: {}", usns);
 
         try {
-            List<UserResponse> resp = webClientBuilder.build()
+            ApiResponse<List<UserResponse>> response = webClientBuilder.build()
                     .post()
-                    .uri(userServiceUrl + "/users")
+                    .uri(userServiceUrl + "/users/getUsers")
                     .bodyValue(usns)
                     .header("Authorization", authHeader)
                     .retrieve()
-                    .bodyToFlux(UserResponse.class)
-                    .collectList()
+                    .bodyToMono(new ParameterizedTypeReference
+                            <ApiResponse<List<UserResponse>>>() {})
                     .block();
 
-            log.info("Successfully fetched data for USNs: {}", usns);
-            return resp != null ? resp : Collections.emptyList();
+            if (response == null || Boolean.FALSE.equals(response.getSuccess())) {
+                log.warn("User service returned failure for USNs: {}", usns);
+                return Collections.emptyList();
+            }
+
+            return response.getData() != null ? response.getData() : Collections.emptyList();
 
         } catch (WebClientResponseException.NotFound e) {
             log.warn("Users not found for USNs: {}", usns);

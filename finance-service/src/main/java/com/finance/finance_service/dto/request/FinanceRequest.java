@@ -16,10 +16,10 @@ public class FinanceRequest {
     @NotNull
     private double amount;
 
-    @NotBlank
+    @NotNull
     private Type type;
 
-    @NotBlank
+    @NotNull
     private Category category;
 
     private String note;

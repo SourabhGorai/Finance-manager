@@ -37,7 +37,7 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
-                        .requestMatchers("/api/users/**").hasAnyRole("SUPER_ADMIN", "FACULTY", "CLUB_ADMIN", "TEAM_MEMBER", "USERS")
+                        .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "ANALYST", "VIEWER")
                         .anyRequest().authenticated())
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

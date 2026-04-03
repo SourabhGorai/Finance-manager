@@ -1,6 +1,8 @@
 package com.userservice.controller;
 
 
+import com.userservice.dto.ApiResponse;
+import com.userservice.dto.UserCreateDto;
 import com.userservice.dto.UserDto;
 import com.userservice.dto.UserUpdateDto;
 import com.userservice.model.Role;
@@ -15,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,48 +36,62 @@ public class UserController {
     }
 
     @GetMapping("/getAll")
-    public ResponseEntity<List<UserDto>> getAllUsers() {
+    public ResponseEntity<ApiResponse<List<UserDto>>> getAllUsers() {
         log.info("Request received to get all users");
-        return ResponseEntity.ok(userService.getAllUsers());
+        List<UserDto> resp = userService.getAllUsers();
+        return ResponseEntity.ok(ApiResponse.success(
+                String.format("Fetch %d records", resp.size()),
+                resp
+        ));
     }
 
 
     @GetMapping("/getAll/paged")
-    public ResponseEntity<Page<UserDto>> getAllUsersPaginated(
+    public ResponseEntity<ApiResponse<Page<UserDto>>> getAllUsersPaginated(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         log.info("Request received to get all users (paginated) - page={}, size={}", page, size);
-        return ResponseEntity.ok(userService.getAllUsersPaginated(page, size));
+        return ResponseEntity.ok(ApiResponse.success(
+                "fetched successfully",
+                userService.getAllUsersPaginated(page, size)
+        ));
     }
 
 
     @GetMapping("/{usn}")
-    public ResponseEntity<UserDto> getUser(@PathVariable String usn) {
+    public ResponseEntity<ApiResponse<UserDto>> getUser(@PathVariable String usn) {
 
         log.info("Request received to get user by ID");
 
         UserDto dto = userService.getUserByUsn(usn);
+        log.info("{}", dto);
         if (dto == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Fetched data successfully",
+                dto
+        ));
 
     }
 
     @PostMapping("/getUsers")
-    public ResponseEntity<List<UserDto>> getUsers(@RequestBody List<String> usns) {
+    public ResponseEntity<ApiResponse<List<UserDto>>> getUsers(@RequestBody List<String> usns) {
 
         log.info("Request received to fetch user data for usns: {}", usns);
 
         List<UserDto> users = userService.getUsersForUsns(usns);
 
-        if(users == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(users);
+        if (users == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(ApiResponse.success(
+                String.format("Fetch %d records", users.size()),
+                users
+        ));
 
     }
 
 
     @PutMapping("/{usn}")
-    public ResponseEntity<UserDto> updateUser(
+    public ResponseEntity<ApiResponse<UserDto>> updateUser(
             @PathVariable String usn,
             @RequestBody UserUpdateDto dto
     ) {
@@ -83,15 +100,19 @@ public class UserController {
 
         try {
             UserDto updated = userService.updateUser(usn, dto);
-            return ResponseEntity.ok(updated);
+            return ResponseEntity.ok(ApiResponse.success(
+                    "User updated successfully",
+                    updated
+            ));
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Failed to update user details"));
         }
 
     }
 
     @DeleteMapping("/soft/{usn}")
-    public ResponseEntity<?> deleteUser(
+    public ResponseEntity<ApiResponse<?>> deleteUser(
             @PathVariable String usn,
             HttpServletRequest req
     ) {
@@ -112,7 +133,7 @@ public class UserController {
     }
 
     @DeleteMapping("/hard/{usn}")
-    public ResponseEntity<?> permanentlyDeleteUser(
+    public ResponseEntity<ApiResponse<?>> permanentlyDeleteUser(
             @PathVariable String usn,
             HttpServletRequest req
     ) {
@@ -132,33 +153,41 @@ public class UserController {
     }
 
     @GetMapping("/validate/{usn}")
-    public Boolean validateUser(@PathVariable String usn){
-        try{
+    public Boolean validateUser(@PathVariable String usn) {
+        try {
             return userService.validate(usn);
-        }catch(NotFoundException e){
+        } catch (NotFoundException e) {
             log.info("User with PRN {} does not exist", usn);
             return false;
         }
     }
 
     @PutMapping("/changeRole/{usn}/{role}")
-    public ResponseEntity<UserDto> changeRole(
+    public ResponseEntity<ApiResponse<UserDto>> changeRole(
             @PathVariable String usn,
             @PathVariable Role role
     ) {
         log.debug("Request received to change role of prn {}", usn);
         UserDto resp = userService.changeRole(usn, role);
-        return ResponseEntity.ok(resp);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Role changed successfully",
+                resp
+        ));
     }
 
     @PutMapping("/changeEmail/{usn}/{email}")
-    public ResponseEntity<UserDto> changeEmail(
+    public ResponseEntity<ApiResponse<UserDto>> changeEmail(
             @PathVariable String usn,
             @PathVariable String email
     ) {
         log.info("Request received to change email for prn: {}", usn);
         UserDto resp = userService.changeEmail(usn, email);
-        return ResponseEntity.ok(resp);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Email changed successfully",
+                resp
+        ));
     }
+
+
 
 }

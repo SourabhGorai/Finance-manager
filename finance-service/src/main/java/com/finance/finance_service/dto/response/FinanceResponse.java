@@ -3,10 +3,9 @@ package com.finance.finance_service.dto.response;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.finance.finance_service.model.Category;
 import com.finance.finance_service.model.Type;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+@Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

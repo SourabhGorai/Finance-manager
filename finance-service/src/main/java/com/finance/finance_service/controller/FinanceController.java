@@ -150,7 +150,7 @@ public class FinanceController {
 
     }
 
-    @GetMapping("/v/getByType/{category}")
+    @GetMapping("/v/getByCategory/{category}")
     public ResponseEntity<ApiResponse<List<FinanceResponse>>> getByCategory(
             @PathVariable Category category,
             HttpServletRequest req
@@ -169,7 +169,7 @@ public class FinanceController {
 
     @GetMapping("/v/getMyMonthlyStats/{month}")
     public ResponseEntity<ApiResponse<MyStats>> getMyMonthlyStats(
-            @PathVariable String month,
+            @PathVariable String month,  // format: 2026-04
             HttpServletRequest req
     ){
 

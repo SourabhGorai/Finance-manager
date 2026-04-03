@@ -56,7 +56,7 @@ public class OwnerValidationFilter extends AbstractGatewayFilterFactory<OwnerVal
             }
 
             // Check if user is accessing their own resource
-            if (!userUsn.equals(pathPrUsn)) {
+            if (!userUsn.equals(pathUsn)) {
                 log.warn("🚫 User '{}' attempted to access resource belonging to '{}'", 
                         userUsn, pathUsn);
                 return onError(exchange, 
@@ -77,7 +77,7 @@ public class OwnerValidationFilter extends AbstractGatewayFilterFactory<OwnerVal
      * - /api/profiles/usn/USN12345
      * - /api/users/USN12345
      */
-    private String extractUsn(String path) {
+    private String extractUsnFromPath(String path) {
         // Pattern to match USN in path (after /api/*/usn/ or /api/*/{usn})
         Pattern pattern = Pattern.compile("/(?:usn/)?([A-Z0-9]+)(?:/|$)");
         Matcher matcher = pattern.matcher(path);

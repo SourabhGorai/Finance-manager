@@ -1,6 +1,8 @@
 package com.userservice.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -9,7 +11,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(
-        name = "users2",
+        name = "users",
         indexes = {
                 @Index(name = "idx_users2_usn",                        columnList = "usn"),
                 @Index(name = "idx_users2_username",                   columnList = "username"),

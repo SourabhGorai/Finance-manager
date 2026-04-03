@@ -4,25 +4,27 @@ import com.finance.finance_service.model.Category;
 import com.finance.finance_service.model.Finance;
 import com.finance.finance_service.model.Type;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
+@Repository
 public interface FinanceRepository extends JpaRepository<Finance, Long> {
 
 
     List<Finance> findAllByIsDeletedOrderByCreatedAtDesc(boolean isDeleted);
 
-    List<Finance> findAllByUsnOrderByCreatedAtDesc(String usn);
+    List<Finance> findAllByUsnAndIsDeletedFalseOrderByCreatedAtDesc(String usn);
 
-    List<Finance> findAllByUsnAndTypeOrderByCreatedAtDesc(Type type);
+    List<Finance> findAllByUsnAndTypeAndIsDeletedFalseOrderByCreatedAtDesc(String usn, Type type);
 
-    List<Finance> findAllByUsnAndCategoryOrderByCreatedAtDesc(Category category);
+    List<Finance> findAllByUsnAndCategoryAndIsDeletedFalseOrderByCreatedAtDesc(String usn, Category category);
 
-    List<Finance> findAllByTypeOrderByCreatedAtDesc(Type type);
+    List<Finance> findAllByTypeAndIsDeletedFalseOrderByCreatedAtDesc(Type type);
 
-    List<Finance> findAllByCategoryOrderByCreatedAtDesc(Category category);
+    List<Finance> findAllByCategoryAndIsDeletedFalseOrderByCreatedAtDesc(Category category);
 
     List<Finance> findByUsnAndTypeAndIsDeleted(String usn, Type type, boolean b);
 

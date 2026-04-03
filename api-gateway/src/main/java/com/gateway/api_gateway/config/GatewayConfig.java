@@ -84,9 +84,10 @@ public class GatewayConfig {
                         .path(
                                 "/api/users/getAll",
                                 "/api/users/getAll/paged",
-                                "/api/users/changeRole/{usn}/{role}")
+                                "/api/users/changeRole/{usn}/{role}",
+                                "/api/users/createAdmin")
                         .and()
-                        .method("GET")
+                        .method("GET", "POST", "PUT")
                         .filters(f -> f
                                 .filter(authenticationFilter.apply(new AuthenticationFilter.Config()))
                                 .filter(authorizationFilter.apply(
@@ -126,7 +127,7 @@ public class GatewayConfig {
 
 
                 // admin and analyst only
-                .route("profile-bulk-operations", r -> r
+                .route("finance-admin/analyst", r -> r
                         .path(
                                 "/api/finance/a/**"
                         )

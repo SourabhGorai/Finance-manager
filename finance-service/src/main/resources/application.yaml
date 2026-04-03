@@ -3,7 +3,7 @@ spring:
     name: finance-service
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/club_user}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/finance_db}
     username: ${DB_USER}
     password: ${DB_PASS}
     driver-class-name: org.postgresql.Driver
@@ -53,3 +53,5 @@ logging:
 app:
   jwt:
     secret: ${SECRET_KEY}
+  user-service:
+    url: "http://USER-SERVICE/api"

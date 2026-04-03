@@ -29,11 +29,11 @@ public class Finance {
     @Min(value = 0)
     private Double amount;
 
-    @NotBlank(message = "INCOME/EXPENSE is required")
+    @NotNull(message = "INCOME/EXPENSE is required")
     @Enumerated(EnumType.STRING)
     private Type type;
 
-    @NotBlank(message = "Category is required")
+    @NotNull(message = "Category is required")
     @Enumerated(EnumType.STRING)
     private Category category;
 
